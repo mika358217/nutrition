@@ -355,14 +355,23 @@ async function loadDB() {
     DB.recipes = data.recipes || [];
     if (data.goals) DB.goals = { ...DB.goals, ...data.goals };
     // override with saved goals
-    const saved = localStorage.getItem('goals');
-    if (saved) DB.goals = JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem('goals');
+      if (saved) DB.goals = JSON.parse(saved);
+    } catch(e) {
+      console.error('Goals parse error', e);
+    }
   } catch(e) { console.error('DB load error', e); }
 }
 
 function loadFromStorage() {
-  const d = localStorage.getItem('diary');
-  if (d) diary = JSON.parse(d);
+  try {
+    const d = localStorage.getItem('diary');
+    if (d) diary = JSON.parse(d);
+  } catch(e) {
+    console.error('Diary parse error, resetting', e);
+    diary = {};
+  }
 }
 
 function saveDiary() {
@@ -418,7 +427,7 @@ function renderDiary() {
     const div = document.createElement('div');
     div.className = 'meal-group';
     div.innerHTML = `
-      <div class="meal-time-label">${group.time} <span style="color:var(--text3);font-size:11px;margin-left:4px">${Math.round(groupTotals.kcal)} ккал</span></div>
+      <div class="meal-time-label">${escHtml(group.time)} <span style="color:var(--text3);font-size:11px;margin-left:4px">${Math.round(groupTotals.kcal)} ккал</span></div>
       <div class="meal-card" id="meal-card-${gi}"></div>
     `;
     container.appendChild(div);
@@ -428,8 +437,8 @@ function renderDiary() {
       row.className = 'meal-entry';
       row.innerHTML = `
         <div>
-          <div class="meal-name">${e.name}${e.isRecipe ? '<span class="tag recipe">рецепт</span>' : ''}</div>
-          <div class="meal-kcal-small">${e.grams}${e.unit || 'г'}</div>
+          <div class="meal-name">${escHtml(e.name)}${e.isRecipe ? '<span class="tag recipe">рецепт</span>' : ''}</div>
+          <div class="meal-kcal-small">${escHtml(String(e.grams))}${escHtml(e.unit || 'г')}</div>
         </div>
         <div class="meal-info">
           <div>${Math.round(e.kcal)} ккал</div>
@@ -595,8 +604,8 @@ function makeResultItem(item, isRecipe) {
     : `${item.kcal} ккал/100${item.unit}`;
   div.innerHTML = `
     <div>
-      <div class="result-name">${item.name}${isRecipe ? '<span class="tag recipe">рецепт</span>' : ''}</div>
-      <div class="result-meta">${kcalLabel}</div>
+      <div class="result-name">${escHtml(item.name)}${isRecipe ? '<span class="tag recipe">рецепт</span>' : ''}</div>
+      <div class="result-meta">${escHtml(kcalLabel)}</div>
     </div>
     <div class="result-add">+</div>
   `;
@@ -622,7 +631,7 @@ function selectProduct(item, isRecipe) {
   if (isRecipe && item.portionKcal) {
     qb.innerHTML = [0.5,1,1.5,2].map(v => `<div class="quick-btn" onclick="setAmount(${v})">${v} п.</div>`).join('');
   } else if (item.portionG) {
-    qb.innerHTML = `<div class="quick-btn" onclick="setAmount(${item.portionG})">${item.portionName}</div>` +
+    qb.innerHTML = `<div class="quick-btn" onclick="setAmount(${parseFloat(item.portionG)})">${escHtml(item.portionName)}</div>` +
       [50,100,150,200].map(v => `<div class="quick-btn" onclick="setAmount(${v})">${v}г</div>`).join('');
   } else {
     qb.innerHTML = [30,50,100,150,200].map(v => `<div class="quick-btn" onclick="setAmount(${v})">${v}г</div>`).join('');
@@ -741,14 +750,14 @@ function parsePaste() {
       const m = calcMacrosForAmount(parsed.product, parsed.grams);
       div.innerHTML = `
         <div>
-          <div class="parsed-name">${parsed.product.name} · ${parsed.grams}г</div>
+          <div class="parsed-name">${escHtml(parsed.product.name)} · ${escHtml(String(parsed.grams))}г</div>
           <div class="parsed-macros">${Math.round(m.kcal)} ккал · Б${Math.round(m.p)} Ж${Math.round(m.f)} У${Math.round(m.c)}</div>
         </div>
         <div class="parsed-check">✓</div>
       `;
     } else {
       div.className = 'parsed-warn';
-      div.innerHTML = `<b>"${seg}"</b> — не найдено в базе`;
+      div.innerHTML = `<b>"${escHtml(seg)}"</b> — не найдено в базе`;
     }
     res.appendChild(div);
   });
@@ -807,13 +816,13 @@ function renderRecipes() {
   list.innerHTML = DB.recipes.map(r => {
     const kcal = r.portionKcal || r.kcalPer100;
     const label = r.portionKcal ? `${kcal} ккал/порц` : `${kcal} ккал/100г`;
-    return `<div class="db-item" style="cursor:pointer;background:var(--card);border-radius:var(--radius);margin-bottom:8px;border:0.5px solid var(--border)" onclick="addRecipeFast('${r.id}')">
+    return `<div class="db-item" style="cursor:pointer;background:var(--card);border-radius:var(--radius);margin-bottom:8px;border:0.5px solid var(--border)" onclick="addRecipeFast('${escHtml(r.id)}')">
       <div>
-        <div class="db-name">${r.name}</div>
-        <div class="db-meta">${r.ingredients ? r.ingredients.slice(0, 50) + (r.ingredients.length > 50 ? '…' : '') : ''}</div>
+        <div class="db-name">${escHtml(r.name)}</div>
+        <div class="db-meta">${r.ingredients ? escHtml(r.ingredients.slice(0, 50)) + (r.ingredients.length > 50 ? '…' : '') : ''}</div>
       </div>
       <div style="text-align:right">
-        <div class="db-kcal">${label}</div>
+        <div class="db-kcal">${escHtml(String(label))}</div>
         <div style="font-size:11px;color:var(--green);margin-top:2px">Добавить →</div>
       </div>
     </div>`;
@@ -842,10 +851,10 @@ function renderDB(filter) {
   list.innerHTML = items.map(p => `
     <div class="db-item">
       <div>
-        <div class="db-name">${p.name}</div>
-        <div class="db-meta">Б${p.p} Ж${p.f} У${p.c} на 100${p.unit}${p.note ? ' · ' + p.note : ''}</div>
+        <div class="db-name">${escHtml(p.name)}</div>
+        <div class="db-meta">Б${escHtml(String(p.p))} Ж${escHtml(String(p.f))} У${escHtml(String(p.c))} на 100${escHtml(p.unit)}${p.note ? ' · ' + escHtml(p.note) : ''}</div>
       </div>
-      <div class="db-kcal">${p.kcal} ккал</div>
+      <div class="db-kcal">${escHtml(String(p.kcal))} ккал</div>
     </div>
   `).join('');
 }
@@ -970,6 +979,15 @@ function exportToday() {
 }
 
 // ─── UTILS ────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function pluralRu(n, one, few, many) {
   const mod10 = n % 10, mod100 = n % 100;
   if (mod10 === 1 && mod100 !== 11) return one;
