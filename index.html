@@ -728,7 +728,7 @@ function parsePaste() {
     // Strip optional group label before colon: "Каша: ..." → "..."
     const withoutLabel = withoutTime.replace(/^[^:：,]+[:：]\s*/, '');
     // Split by comma or semicolon, but only if followed by a word (not just a number)
-    const parts = withoutLabel.split(/[,;]\s*(?=[а-яёa-z]/i));
+    const parts = withoutLabel.split(/[,;]\s*(?=[а-яёa-z])/i);
     parts.forEach(p => segments.push(p.trim()));
   });
 
