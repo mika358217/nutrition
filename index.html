@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<title>Питание</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root {
+  --green: #1D9E75;
+  --green-light: #E1F5EE;
+  --green-dark: #085041;
+  --purple: #534AB7;
+  --amber: #EF9F27;
+  --blue: #378ADD;
+  --bg: #f5f5f3;
+  --card: #ffffff;
+  --border: rgba(0,0,0,0.1);
+  --text: #1a1a18;
+  --text2: #666663;
+  --text3: #999996;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a18;
+    --card: #242422;
+    --border: rgba(255,255,255,0.1);
+    --text: #f0efe8;
+    --text2: #9e9c94;
+    --text3: #666663;
+    --green-light: #0a3028;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; min-height: 100dvh; padding-bottom: 70px; }
+
+/* NAV */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 0.5px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 0 6px; font-size: 10px; color: var(--text3); background: none; border: none; cursor: pointer; }
+.nav-btn.active { color: var(--green); }
+.nav-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.nav-fab { width: 44px; height: 44px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: -10px auto 0; border: none; cursor: pointer; }
+.nav-fab svg { stroke: white; }
+
+/* SCREENS */
+.screen { display: none; padding: 16px; max-width: 480px; margin: 0 auto; }
+.screen.active { display: block; }
+
+/* HEADER */
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.page-title { font-size: 22px; font-weight: 600; }
+
+/* MACROS ROW */
+.macros-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+.macro-card { background: var(--card); border-radius: var(--radius-sm); padding: 10px 6px; text-align: center; border: 0.5px solid var(--border); }
+.macro-val { font-size: 15px; font-weight: 600; }
+.macro-lbl { font-size: 10px; color: var(--text3); margin-top: 1px; }
+.macro-sub { font-size: 10px; color: var(--text2); }
+.macro-bar { height: 3px; border-radius: 2px; background: var(--border); margin-top: 5px; overflow: hidden; }
+.macro-fill { height: 100%; border-radius: 2px; }
+.over { color: #E24B4A; }
+
+/* MEALS */
+.meal-group { margin-bottom: 12px; }
+.meal-time-label { font-size: 12px; color: var(--text3); font-weight: 500; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.meal-time-label::after { content: ''; flex: 1; height: 0.5px; background: var(--border); }
+.meal-card { background: var(--card); border-radius: var(--radius); border: 0.5px solid var(--border); overflow: hidden; }
+.meal-entry { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; border-bottom: 0.5px solid var(--border); }
+.meal-entry:last-child { border-bottom: none; }
+.meal-name { font-size: 13px; }
+.meal-info { font-size: 12px; color: var(--text3); text-align: right; }
+.meal-kcal-small { font-size: 11px; color: var(--text2); }
+.add-to-meal { display: flex; align-items: center; gap: 5px; padding: 9px 12px; font-size: 12px; color: var(--green); cursor: pointer; background: none; border: none; width: 100%; }
+
+/* EMPTY DAY */
+.empty-add { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 20px; color: var(--text3); font-size: 14px; border: 1.5px dashed var(--border); border-radius: var(--radius); cursor: pointer; margin-top: 8px; }
+
+/* MODAL OVERLAY */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; align-items: flex-end; }
+.overlay.open { display: flex; }
+.sheet { background: var(--card); border-radius: 20px 20px 0 0; width: 100%; max-height: 90dvh; display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); }
+.sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 10px auto 0; }
+.sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; }
+.sheet-title { font-size: 17px; font-weight: 600; }
+.sheet-close { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 20px; padding: 4px; }
+.sheet-body { overflow-y: auto; flex: 1; }
+
+/* TABS */
+.tab-row { display: flex; margin: 0 16px 12px; background: var(--bg); border-radius: var(--radius-sm); padding: 2px; }
+.tab-btn { flex: 1; padding: 7px 4px; font-size: 12px; font-weight: 500; color: var(--text2); background: none; border: none; border-radius: 6px; cursor: pointer; }
+.tab-btn.active { background: var(--card); color: var(--text); }
+
+/* SEARCH */
+.search-wrap { padding: 0 16px 10px; }
+.search-input { width: 100%; padding: 10px 14px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; color: var(--text); outline: none; }
+.search-input:focus { border-color: var(--green); }
+
+/* RESULTS */
+.result-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 0.5px solid var(--border); cursor: pointer; }
+.result-item:active { background: var(--bg); }
+.result-name { font-size: 14px; }
+.result-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.result-add { font-size: 20px; color: var(--green); font-weight: 300; padding: 4px 8px; }
+.section-header { padding: 6px 16px; font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg); }
+
+/* AMOUNT PANEL */
+.amount-panel { padding: 16px; }
+.selected-product { font-size: 14px; font-weight: 500; margin-bottom: 12px; }
+.amount-row { display: flex; align-items: center; gap: 12px; background: var(--bg); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 10px; }
+.amount-input { flex: 1; font-size: 26px; font-weight: 600; background: none; border: none; outline: none; color: var(--text); width: 80px; }
+.amount-unit { font-size: 14px; color: var(--text3); }
+.quick-btns { display: flex; gap: 8px; margin-bottom: 12px; }
+.quick-btn { flex: 1; padding: 8px 4px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text2); cursor: pointer; text-align: center; }
+.quick-btn:active { background: var(--green-light); color: var(--green-dark); }
+.time-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 13px; color: var(--text2); }
+.time-input { padding: 6px 10px; background: var(--bg); border: 0.5px solid var(--border); border-radius: 20px; font-size: 13px; color: var(--text); outline: none; }
+.time-input:focus { border-color: var(--green); }
+.preview-macros { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 16px; }
+.preview-card { background: var(--bg); border-radius: var(--radius-sm); padding: 8px 4px; text-align: center; }
+.preview-val { font-size: 14px; font-weight: 600; }
+.preview-lbl { font-size: 10px; color: var(--text3); }
+.btn-confirm { width: 100%; padding: 14px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; }
+.btn-confirm:active { opacity: 0.85; }
+
+/* PASTE TAB */
+.paste-wrap { padding: 16px; }
+.paste-textarea { width: 100%; min-height: 120px; padding: 12px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: monospace; color: var(--text); outline: none; resize: vertical; }
+.paste-textarea:focus { border-color: var(--green); }
+.parse-btn { width: 100%; padding: 11px; margin-top: 10px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; }
+.parsed-results { margin-top: 12px; }
+.parsed-ok { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; background: var(--card); border-radius: var(--radius-sm); margin-bottom: 6px; border: 0.5px solid var(--border); }
+.parsed-warn { padding: 9px 12px; background: #FAEEDA; border-radius: var(--radius-sm); margin-bottom: 6px; font-size: 13px; color: #633806; }
+@media (prefers-color-scheme: dark) { .parsed-warn { background: #2a1f05; color: #FAC775; } }
+.parsed-name { font-size: 13px; }
+.parsed-macros { font-size: 11px; color: var(--text3); }
+.parsed-check { color: var(--green); font-size: 18px; }
+.parsed-actions { display: flex; gap: 8px; margin-top: 12px; }
+.btn-add-all { flex: 1; padding: 12px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-back { padding: 12px 16px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; color: var(--text2); cursor: pointer; }
+
+/* ANALYTICS */
+.analytics-card { background: var(--card); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 14px; margin-bottom: 12px; }
+.analytics-title { font-size: 13px; color: var(--text2); margin-bottom: 10px; }
+.week-bars { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+.week-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.week-bar-col { flex: 1; display: flex; align-items: flex-end; width: 100%; }
+.week-bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 3px; transition: height 0.3s; }
+.week-day-lbl { font-size: 10px; color: var(--text3); }
+.avg-row { display: flex; justify-content: space-between; margin-top: 10px; }
+.avg-item { text-align: center; }
+.avg-val { font-size: 14px; font-weight: 600; }
+.avg-lbl { font-size: 10px; color: var(--text3); }
+
+/* DATABASE SCREEN */
+.db-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 0.5px solid var(--border); background: var(--card); }
+.db-name { font-size: 14px; }
+.db-meta { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.db-kcal { font-size: 14px; font-weight: 500; }
+.fab-add { position: fixed; bottom: 86px; right: 20px; width: 52px; height: 52px; background: var(--green); border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 50; }
+.fab-add svg { stroke: white; }
+
+/* UTILS */
+.tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 5px; background: var(--green-light); color: var(--green-dark); }
+.tag.recipe { background: #EEF; color: var(--purple); }
+@media (prefers-color-scheme: dark) { .tag.recipe { background: #1a1830; color: #9D97E8; } }
+</style>
+</head>
+<body>
+
+<!-- DIARY SCREEN -->
+<div class="screen active" id="screen-diary">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Сегодня</div>
+      <div style="font-size:12px;color:var(--text3)" id="today-date"></div>
+    </div>
+    <button onclick="showScreen('screen-settings')" style="background:none;border:none;cursor:pointer;color:var(--text3)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+
+  <div class="macros-row" id="macros-row"></div>
+  <div id="meals-container"></div>
+  <div class="empty-add" id="empty-add" onclick="openAdd()" style="display:none">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Добавить первый приём
+  </div>
+</div>
+
+<!-- RECIPES SCREEN -->
+<div class="screen" id="screen-recipes">
+  <div class="page-header"><div class="page-title">Рецепты</div></div>
+  <div id="recipes-list"></div>
+</div>
+
+<!-- ANALYTICS SCREEN -->
+<div class="screen" id="screen-analytics">
+  <div class="page-header"><div class="page-title">Аналитика</div></div>
+  <div class="analytics-card">
+    <div class="analytics-title">Калории за 7 дней</div>
+    <div class="week-bars" id="week-bars"></div>
+  </div>
+  <div class="analytics-card">
+    <div class="analytics-title">Среднее за 7 дней</div>
+    <div class="avg-row" id="avg-row"></div>
+  </div>
+</div>
+
+<!-- DATABASE SCREEN -->
+<div class="screen" id="screen-db">
+  <div class="page-header"><div class="page-title">База продуктов</div></div>
+  <div class="search-wrap"><input class="search-input" placeholder="Поиск..." oninput="filterDB(this.value)" id="db-search"></div>
+  <div id="db-list"></div>
+  <button class="fab-add" onclick="openAddProduct()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div class="screen" id="screen-settings">
+  <div class="page-header">
+    <div class="page-title">Настройки</div>
+    <button onclick="showScreen('screen-diary')" style="background:none;border:none;cursor:pointer;color:var(--green);font-size:14px;">Готово</button>
+  </div>
+  <div class="analytics-card">
+    <div class="analytics-title">Цели на день</div>
+    <div style="display:grid;gap:10px;margin-top:4px">
+      <label style="font-size:13px;color:var(--text2)">Калории
+        <input type="number" id="goal-kcal" class="search-input" style="margin-top:4px" placeholder="2050">
+      </label>
+      <label style="font-size:13px;color:var(--text2)">Белок (г)
+        <input type="number" id="goal-p" class="search-input" style="margin-top:4px" placeholder="133">
+      </label>
+      <label style="font-size:13px;color:var(--text2)">Жиры (г)
+        <input type="number" id="goal-f" class="search-input" style="margin-top:4px" placeholder="68">
+      </label>
+      <label style="font-size:13px;color:var(--text2)">Углеводы (г)
+        <input type="number" id="goal-c" class="search-input" style="margin-top:4px" placeholder="222">
+      </label>
+      <button class="btn-confirm" onclick="saveGoals()">Сохранить цели</button>
+    </div>
+  </div>
+  <div class="analytics-card" style="margin-top:12px">
+    <div class="analytics-title">Экспорт</div>
+    <button class="btn-confirm" style="background:var(--bg);color:var(--text);border:0.5px solid var(--border);margin-top:4px" onclick="exportToday()">Скачать дневник за сегодня (.txt)</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-diary" onclick="showScreen('screen-diary')">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h10"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+    Дневник
+  </button>
+  <button class="nav-btn" id="nav-recipes" onclick="showScreen('screen-recipes')">
+    <svg viewBox="0 0 24 24"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>
+    Рецепты
+  </button>
+  <button class="nav-fab" onclick="openAdd()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+  <button class="nav-btn" id="nav-analytics" onclick="showScreen('screen-analytics')">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Графики
+  </button>
+  <button class="nav-btn" id="nav-db" onclick="showScreen('screen-db')">
+    <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+    База
+  </button>
+</nav>
+
+<!-- ADD SHEET -->
+<div class="overlay" id="overlay-add" onclick="closeAdd(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" id="add-title">Добавить</span>
+      <button class="sheet-close" onclick="closeAdd()">×</button>
+    </div>
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-search" onclick="switchTab('search')">Поиск</button>
+      <button class="tab-btn" id="tab-paste" onclick="switchTab('paste')">Списком</button>
+    </div>
+    <div class="sheet-body">
+      <!-- SEARCH TAB -->
+      <div id="pane-search">
+        <div class="search-wrap">
+          <input class="search-input" id="add-search" placeholder="Название продукта..." oninput="searchProducts(this.value)" autocomplete="off">
+        </div>
+        <div id="search-results"></div>
+        <!-- AMOUNT PANEL (hidden until product selected) -->
+        <div id="amount-panel" class="amount-panel" style="display:none">
+          <div class="selected-product" id="selected-name"></div>
+          <div class="time-row">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Время:
+            <input type="time" class="time-input" id="entry-time">
+          </div>
+          <div class="amount-row">
+            <input type="number" class="amount-input" id="amount-input" value="100" min="1" max="9999" oninput="updatePreview()">
+            <span class="amount-unit" id="amount-unit">г</span>
+          </div>
+          <div class="quick-btns" id="quick-btns"></div>
+          <div class="preview-macros" id="preview-macros"></div>
+          <button class="btn-confirm" onclick="confirmAdd()">Добавить</button>
+        </div>
+      </div>
+
+      <!-- PASTE TAB -->
+      <div id="pane-paste" style="display:none">
+        <div class="paste-wrap">
+          <div class="time-row">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Время:
+            <input type="time" class="time-input" id="paste-time">
+          </div>
+          <textarea class="paste-textarea" id="paste-input" placeholder="Малина 46&#10;Йогурт 55 1%&#10;Творог 60"></textarea>
+          <button class="parse-btn" onclick="parsePaste()">Разобрать</button>
+          <div class="parsed-results" id="parsed-results"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let DB = { products: [], recipes: [], goals: { kcal: 2050, p: 133, f: 68, c: 222 } };
+let diary = {}; // { "2026-06-14": [ {time, productId, name, grams, kcal, p, f, c} ] }
+let selectedProduct = null;
+let parsedItems = [];
+
+// ─── INIT ─────────────────────────────────────────────────
+async function init() {
+  loadFromStorage();
+  await loadDB();
+  const today = todayKey();
+  document.getElementById('today-date').textContent = formatDate(today);
+  renderDiary();
+  renderRecipes();
+  renderDB();
+  renderSettings();
+}
+
+async function loadDB() {
+  try {
+    const r = await fetch('data.json');
+    const data = await r.json();
+    DB.products = data.products || [];
+    DB.recipes = data.recipes || [];
+    if (data.goals) DB.goals = { ...DB.goals, ...data.goals };
+    // override with saved goals
+    const saved = localStorage.getItem('goals');
+    if (saved) DB.goals = JSON.parse(saved);
+  } catch(e) { console.error('DB load error', e); }
+}
+
+function loadFromStorage() {
+  const d = localStorage.getItem('diary');
+  if (d) diary = JSON.parse(d);
+}
+
+function saveDiary() {
+  localStorage.setItem('diary', JSON.stringify(diary));
+}
+
+// ─── DATE UTILS ───────────────────────────────────────────
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatDate(key) {
+  const d = new Date(key + 'T12:00:00');
+  return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function nowTime() {
+  const n = new Date();
+  return n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
+}
+
+// ─── SCREENS ──────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const map = { 'screen-diary': 'nav-diary', 'screen-recipes': 'nav-recipes', 'screen-analytics': 'nav-analytics', 'screen-db': 'nav-db' };
+  if (map[id]) document.getElementById(map[id]).classList.add('active');
+  if (id === 'screen-analytics') renderAnalytics();
+}
+
+// ─── DIARY RENDER ─────────────────────────────────────────
+function renderDiary() {
+  const today = todayKey();
+  const entries = diary[today] || [];
+  const totals = calcTotals(entries);
+  renderMacros(totals);
+
+  const container = document.getElementById('meals-container');
+  container.innerHTML = '';
+
+  if (entries.length === 0) {
+    document.getElementById('empty-add').style.display = 'flex';
+    return;
+  }
+  document.getElementById('empty-add').style.display = 'none';
+
+  // group by time proximity (within 40 min)
+  const groups = groupByTime(entries);
+
+  groups.forEach((group, gi) => {
+    const groupTotals = calcTotals(group.entries);
+    const div = document.createElement('div');
+    div.className = 'meal-group';
+    div.innerHTML = `
+      <div class="meal-time-label">${group.time} <span style="color:var(--text3);font-size:11px;margin-left:4px">${Math.round(groupTotals.kcal)} ккал</span></div>
+      <div class="meal-card" id="meal-card-${gi}"></div>
+    `;
+    container.appendChild(div);
+    const card = div.querySelector('.meal-card');
+    group.entries.forEach((e, ei) => {
+      const row = document.createElement('div');
+      row.className = 'meal-entry';
+      row.innerHTML = `
+        <div>
+          <div class="meal-name">${e.name}${e.isRecipe ? '<span class="tag recipe">рецепт</span>' : ''}</div>
+          <div class="meal-kcal-small">${e.grams}${e.unit || 'г'}</div>
+        </div>
+        <div class="meal-info">
+          <div>${Math.round(e.kcal)} ккал</div>
+          <div style="font-size:10px">Б${Math.round(e.p)} Ж${Math.round(e.f)} У${Math.round(e.c)}</div>
+        </div>
+      `;
+      row.onclick = () => removeEntry(today, e._id);
+      card.appendChild(row);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-to-meal';
+    addBtn.innerHTML = '+ добавить в этот приём';
+    addBtn.onclick = () => openAdd(group.time);
+    card.appendChild(addBtn);
+  });
+
+  // "new meal" button
+  const newBtn = document.createElement('div');
+  newBtn.className = 'empty-add';
+  newBtn.style.marginTop = '8px';
+  newBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Новый приём';
+  newBtn.onclick = () => openAdd();
+  container.appendChild(newBtn);
+}
+
+function groupByTime(entries) {
+  if (!entries.length) return [];
+  const sorted = [...entries].sort((a, b) => a.time.localeCompare(b.time));
+  const groups = [];
+  let cur = { time: sorted[0].time, entries: [sorted[0]] };
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = timeToMin(cur.entries[cur.entries.length-1].time);
+    const curr = timeToMin(sorted[i].time);
+    if (curr - prev <= 40) { cur.entries.push(sorted[i]); }
+    else { groups.push(cur); cur = { time: sorted[i].time, entries: [sorted[i]] }; }
+  }
+  groups.push(cur);
+  return groups;
+}
+
+function timeToMin(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function calcTotals(entries) {
+  return entries.reduce((a, e) => ({
+    kcal: a.kcal + e.kcal,
+    p: a.p + e.p,
+    f: a.f + e.f,
+    c: a.c + e.c
+  }), { kcal: 0, p: 0, f: 0, c: 0 });
+}
+
+function renderMacros(totals) {
+  const g = DB.goals;
+  const row = document.getElementById('macros-row');
+  const items = [
+    { key: 'kcal', label: 'ккал', goal: g.kcal, val: totals.kcal, color: '#1D9E75' },
+    { key: 'p', label: 'белок', goal: g.p, val: totals.p, color: '#534AB7' },
+    { key: 'f', label: 'жиры', goal: g.f, val: totals.f, color: '#EF9F27' },
+    { key: 'c', label: 'углев.', goal: g.c, val: totals.c, color: '#378ADD' },
+  ];
+  row.innerHTML = items.map(it => {
+    const pct = Math.min(Math.round(it.val / it.goal * 100), 100);
+    const over = it.val > it.goal;
+    const dispVal = it.key === 'kcal' ? Math.round(it.val) : Math.round(it.val) + 'г';
+    const dispGoal = it.key === 'kcal' ? it.goal : it.goal + 'г';
+    return `<div class="macro-card">
+      <div class="macro-val ${over ? 'over' : ''}">${dispVal}</div>
+      <div class="macro-lbl">${it.label}</div>
+      <div class="macro-sub">из ${dispGoal}</div>
+      <div class="macro-bar"><div class="macro-fill" style="width:${pct}%;background:${it.color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ─── ADD SHEET ────────────────────────────────────────────
+let addMealTime = null;
+
+function openAdd(prefillTime) {
+  addMealTime = prefillTime || null;
+  document.getElementById('overlay-add').classList.add('open');
+  const t = prefillTime || nowTime();
+  document.getElementById('entry-time').value = t;
+  document.getElementById('paste-time').value = t;
+  switchTab('search');
+  document.getElementById('add-search').value = '';
+  document.getElementById('search-results').innerHTML = '';
+  hideAmountPanel();
+  document.getElementById('parsed-results').innerHTML = '';
+  document.getElementById('paste-input').value = '';
+  setTimeout(() => document.getElementById('add-search').focus(), 100);
+}
+
+function closeAdd(e) {
+  if (e && e.target !== document.getElementById('overlay-add')) return;
+  document.getElementById('overlay-add').classList.remove('open');
+}
+
+function switchTab(tab) {
+  document.getElementById('tab-search').classList.toggle('active', tab==='search');
+  document.getElementById('tab-paste').classList.toggle('active', tab==='paste');
+  document.getElementById('pane-search').style.display = tab==='search' ? '' : 'none';
+  document.getElementById('pane-paste').style.display = tab==='paste' ? '' : 'none';
+}
+
+// ─── SEARCH ───────────────────────────────────────────────
+function searchProducts(q) {
+  hideAmountPanel();
+  const res = document.getElementById('search-results');
+  if (!q.trim()) {
+    renderRecentAndRecipes(res);
+    return;
+  }
+  const ql = q.toLowerCase();
+  const products = DB.products.filter(p => p.name.toLowerCase().includes(ql));
+  const recipes = DB.recipes.filter(r => r.name.toLowerCase().includes(ql));
+
+  if (!products.length && !recipes.length) {
+    res.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Не найдено</div>';
+    return;
+  }
+
+  res.innerHTML = '';
+  if (recipes.length) {
+    res.innerHTML += `<div class="section-header">Рецепты</div>`;
+    recipes.forEach(r => res.appendChild(makeResultItem(r, true)));
+  }
+  if (products.length) {
+    res.innerHTML += `<div class="section-header">Продукты</div>`;
+    products.forEach(p => res.appendChild(makeResultItem(p, false)));
+  }
+}
+
+function renderRecentAndRecipes(res) {
+  res.innerHTML = '';
+  const today = todayKey();
+  const entries = diary[today] || [];
+  const recentIds = [...new Set(entries.map(e => e.productId).filter(Boolean))].slice(-5).reverse();
+
+  if (DB.recipes.length) {
+    res.innerHTML += `<div class="section-header">Рецепты</div>`;
+    DB.recipes.forEach(r => res.appendChild(makeResultItem(r, true)));
+  }
+  if (recentIds.length) {
+    res.innerHTML += `<div class="section-header">Недавние</div>`;
+    recentIds.forEach(id => {
+      const p = DB.products.find(x => x.id === id);
+      if (p) res.appendChild(makeResultItem(p, false));
+    });
+  }
+  if (!recentIds.length && !DB.recipes.length) {
+    res.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Начните вводить название</div>';
+  }
+}
+
+function makeResultItem(item, isRecipe) {
+  const div = document.createElement('div');
+  div.className = 'result-item';
+  const kcalLabel = isRecipe
+    ? (item.portionKcal ? `${item.portionKcal} ккал/порц` : `${item.kcalPer100} ккал/100г`)
+    : `${item.kcal} ккал/100${item.unit}`;
+  div.innerHTML = `
+    <div>
+      <div class="result-name">${item.name}${isRecipe ? '<span class="tag recipe">рецепт</span>' : ''}</div>
+      <div class="result-meta">${kcalLabel}</div>
+    </div>
+    <div class="result-add">+</div>
+  `;
+  div.onclick = () => selectProduct(item, isRecipe);
+  return div;
+}
+
+// ─── AMOUNT PANEL ─────────────────────────────────────────
+function selectProduct(item, isRecipe) {
+  selectedProduct = { ...item, isRecipe };
+  document.getElementById('search-results').style.display = 'none';
+  document.getElementById('amount-panel').style.display = '';
+  document.getElementById('selected-name').textContent = item.name;
+
+  const unit = isRecipe && item.portionKcal ? 'порц.' : (item.unit || 'г');
+  document.getElementById('amount-unit').textContent = unit;
+
+  const defaultAmt = isRecipe && item.portionKcal ? 1 : 100;
+  document.getElementById('amount-input').value = defaultAmt;
+
+  // quick amounts
+  const qb = document.getElementById('quick-btns');
+  if (isRecipe && item.portionKcal) {
+    qb.innerHTML = [0.5,1,1.5,2].map(v => `<div class="quick-btn" onclick="setAmount(${v})">${v} п.</div>`).join('');
+  } else if (item.portionG) {
+    qb.innerHTML = `<div class="quick-btn" onclick="setAmount(${item.portionG})">${item.portionName}</div>` +
+      [50,100,150,200].map(v => `<div class="quick-btn" onclick="setAmount(${v})">${v}г</div>`).join('');
+  } else {
+    qb.innerHTML = [30,50,100,150,200].map(v => `<div class="quick-btn" onclick="setAmount(${v})">${v}г</div>`).join('');
+  }
+  updatePreview();
+}
+
+function setAmount(v) {
+  document.getElementById('amount-input').value = v;
+  updatePreview();
+}
+
+function updatePreview() {
+  if (!selectedProduct) return;
+  const grams = parseFloat(document.getElementById('amount-input').value) || 0;
+  const m = calcMacrosForAmount(selectedProduct, grams);
+  document.getElementById('preview-macros').innerHTML = [
+    { label: 'ккал', val: Math.round(m.kcal), color: '#1D9E75' },
+    { label: 'белок', val: Math.round(m.p) + 'г', color: '#534AB7' },
+    { label: 'жиры', val: Math.round(m.f) + 'г', color: '#EF9F27' },
+    { label: 'углев.', val: Math.round(m.c) + 'г', color: '#378ADD' },
+  ].map(x => `<div class="preview-card">
+    <div class="preview-val" style="color:${x.color}">${x.val}</div>
+    <div class="preview-lbl">${x.label}</div>
+  </div>`).join('');
+}
+
+function calcMacrosForAmount(item, amount) {
+  if (item.isRecipe && item.portionKcal) {
+    return { kcal: item.portionKcal * amount, p: item.portionP * amount, f: item.portionF * amount, c: item.portionC * amount };
+  }
+  const ratio = amount / 100;
+  const kcal100 = item.isRecipe ? item.kcalPer100 : item.kcal;
+  return {
+    kcal: kcal100 * ratio,
+    p: (item.isRecipe ? item.pPer100 : item.p) * ratio,
+    f: (item.isRecipe ? item.fPer100 : item.f) * ratio,
+    c: (item.isRecipe ? item.cPer100 : item.c) * ratio,
+  };
+}
+
+function hideAmountPanel() {
+  selectedProduct = null;
+  document.getElementById('amount-panel').style.display = 'none';
+  document.getElementById('search-results').style.display = '';
+}
+
+function confirmAdd() {
+  if (!selectedProduct) return;
+  const grams = parseFloat(document.getElementById('amount-input').value) || 0;
+  if (!grams) return;
+  const time = document.getElementById('entry-time').value || nowTime();
+  const m = calcMacrosForAmount(selectedProduct, grams);
+  addEntry({
+    _id: Date.now().toString(),
+    time,
+    productId: selectedProduct.id,
+    name: selectedProduct.name,
+    grams,
+    unit: document.getElementById('amount-unit').textContent,
+    isRecipe: !!selectedProduct.isRecipe,
+    kcal: m.kcal, p: m.p, f: m.f, c: m.c
+  });
+  closeAdd();
+  renderDiary();
+}
+
+function addEntry(entry) {
+  const today = todayKey();
+  if (!diary[today]) diary[today] = [];
+  diary[today].push(entry);
+  saveDiary();
+}
+
+function removeEntry(dateKey, id) {
+  if (!diary[dateKey]) return;
+  diary[dateKey] = diary[dateKey].filter(e => e._id !== id);
+  saveDiary();
+  renderDiary();
+}
+
+// ─── PASTE / LIST INPUT ───────────────────────────────────
+function parsePaste() {
+  const text = document.getElementById('paste-input').value;
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  parsedItems = [];
+  const res = document.getElementById('parsed-results');
+  res.innerHTML = '';
+
+  lines.forEach(line => {
+    const parsed = parseLine(line);
+    parsedItems.push(parsed);
+    const div = document.createElement('div');
+    if (parsed.found) {
+      div.className = 'parsed-ok';
+      const m = calcMacrosForAmount(parsed.product, parsed.grams);
+      div.innerHTML = `
+        <div>
+          <div class="parsed-name">${parsed.product.name} · ${parsed.grams}г</div>
+          <div class="parsed-macros">${Math.round(m.kcal)} ккал · Б${Math.round(m.p)} Ж${Math.round(m.f)} У${Math.round(m.c)}</div>
+        </div>
+        <div class="parsed-check">✓</div>
+      `;
+    } else {
+      div.className = 'parsed-warn';
+      div.innerHTML = `<b>"${line}"</b> — не найдено в базе`;
+    }
+    res.appendChild(div);
+  });
+
+  const found = parsedItems.filter(x => x.found);
+  if (found.length) {
+    const actDiv = document.createElement('div');
+    actDiv.className = 'parsed-actions';
+    actDiv.innerHTML = `
+      <button class="btn-back" onclick="document.getElementById('parsed-results').innerHTML='';parsedItems=[]">Назад</button>
+      <button class="btn-add-all" onclick="addParsedAll()">Добавить ${found.length} ${pluralRu(found.length, 'продукт', 'продукта', 'продуктов')}</button>
+    `;
+    res.appendChild(actDiv);
+  }
+}
+
+function parseLine(line) {
+  // Extract grams: last number in line
+  const numMatch = line.match(/(\d+(?:[.,]\d+)?)\s*(?:г|гр|ml|мл)?$/i);
+  if (!numMatch) return { found: false };
+  const grams = parseFloat(numMatch[1].replace(',', '.'));
+  const namePart = line.slice(0, numMatch.index).trim();
+
+  // Try to find product by name (fuzzy)
+  const nl = namePart.toLowerCase();
+  let product = DB.products.find(p => p.name.toLowerCase().includes(nl) || nl.includes(p.name.toLowerCase().split(' ')[0]));
+  if (!product && namePart.length > 2) {
+    // try partial match on first word
+    const firstWord = nl.split(/\s+/)[0];
+    product = DB.products.find(p => p.name.toLowerCase().startsWith(firstWord));
+  }
+  if (product) return { found: true, product, grams };
+  return { found: false };
+}
+
+function addParsedAll() {
+  const time = document.getElementById('paste-time').value || nowTime();
+  parsedItems.filter(x => x.found).forEach(item => {
+    const m = calcMacrosForAmount(item.product, item.grams);
+    addEntry({ _id: Date.now().toString() + Math.random(), time, productId: item.product.id, name: item.product.name, grams: item.grams, unit: item.product.unit || 'г', isRecipe: false, kcal: m.kcal, p: m.p, f: m.f, c: m.c });
+  });
+  closeAdd();
+  renderDiary();
+}
+
+// ─── RECIPES SCREEN ───────────────────────────────────────
+function renderRecipes() {
+  const list = document.getElementById('recipes-list');
+  list.innerHTML = DB.recipes.map(r => {
+    const kcal = r.portionKcal || r.kcalPer100;
+    const label = r.portionKcal ? `${kcal} ккал/порц` : `${kcal} ккал/100г`;
+    return `<div class="db-item" style="cursor:pointer;background:var(--card);border-radius:var(--radius);margin-bottom:8px;border:0.5px solid var(--border)" onclick="addRecipeFast('${r.id}')">
+      <div>
+        <div class="db-name">${r.name}</div>
+        <div class="db-meta">${r.ingredients ? r.ingredients.slice(0, 50) + (r.ingredients.length > 50 ? '…' : '') : ''}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="db-kcal">${label}</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px">Добавить →</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addRecipeFast(id) {
+  const recipe = DB.recipes.find(r => r.id === id);
+  if (!recipe) return;
+  showScreen('screen-diary');
+  setTimeout(() => {
+    openAdd();
+    setTimeout(() => {
+      document.getElementById('add-search').value = recipe.name;
+      selectProduct(recipe, true);
+    }, 100);
+  }, 50);
+}
+
+// ─── DATABASE SCREEN ──────────────────────────────────────
+function renderDB(filter) {
+  const list = document.getElementById('db-list');
+  const items = filter
+    ? DB.products.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()))
+    : DB.products;
+  list.innerHTML = items.map(p => `
+    <div class="db-item">
+      <div>
+        <div class="db-name">${p.name}</div>
+        <div class="db-meta">Б${p.p} Ж${p.f} У${p.c} на 100${p.unit}${p.note ? ' · ' + p.note : ''}</div>
+      </div>
+      <div class="db-kcal">${p.kcal} ккал</div>
+    </div>
+  `).join('');
+}
+
+function filterDB(q) { renderDB(q); }
+
+function openAddProduct() {
+  const name = prompt('Название продукта:');
+  if (!name) return;
+  const kcal = parseFloat(prompt('Калории на 100г:'));
+  const p = parseFloat(prompt('Белок (г):'));
+  const f = parseFloat(prompt('Жиры (г):'));
+  const c = parseFloat(prompt('Углеводы (г):'));
+  if (isNaN(kcal)) return;
+  const product = { id: 'u' + Date.now(), name, kcal, p: p||0, f: f||0, c: c||0, per: 100, unit: 'г' };
+  DB.products.push(product);
+  saveCustomProducts();
+  renderDB();
+}
+
+function saveCustomProducts() {
+  const custom = DB.products.filter(p => p.id.startsWith('u'));
+  localStorage.setItem('customProducts', JSON.stringify(custom));
+}
+
+function loadCustomProducts() {
+  const saved = localStorage.getItem('customProducts');
+  if (saved) DB.products.push(...JSON.parse(saved));
+}
+
+// ─── ANALYTICS ────────────────────────────────────────────
+function renderAnalytics() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const entries = diary[key] || [];
+    const total = calcTotals(entries);
+    days.push({ key, label: d.toLocaleDateString('ru-RU', { weekday: 'short' }).slice(0,2), ...total });
+  }
+
+  const maxKcal = Math.max(...days.map(d => d.kcal), 1);
+  const goalKcal = DB.goals.kcal;
+
+  document.getElementById('week-bars').innerHTML = days.map(d => {
+    const pct = Math.round(d.kcal / maxKcal * 100);
+    const color = d.kcal > goalKcal ? '#E24B4A' : d.kcal > 0 ? '#1D9E75' : 'var(--border)';
+    return `<div class="week-bar-wrap">
+      <div class="week-bar-col"><div class="week-bar" style="height:${pct}%;background:${color}"></div></div>
+      <div class="week-day-lbl">${d.label}</div>
+    </div>`;
+  }).join('');
+
+  const activeDays = days.filter(d => d.kcal > 0);
+  const avg = activeDays.length ? calcTotals(activeDays).kcal / activeDays.length : 0;
+  const avgP = activeDays.length ? calcTotals(activeDays).p / activeDays.length : 0;
+  const avgF = activeDays.length ? calcTotals(activeDays).f / activeDays.length : 0;
+  const avgC = activeDays.length ? calcTotals(activeDays).c / activeDays.length : 0;
+
+  document.getElementById('avg-row').innerHTML = [
+    { label: 'ккал', val: Math.round(avg), color: '#1D9E75' },
+    { label: 'белок', val: Math.round(avgP) + 'г', color: '#534AB7' },
+    { label: 'жиры', val: Math.round(avgF) + 'г', color: '#EF9F27' },
+    { label: 'углев.', val: Math.round(avgC) + 'г', color: '#378ADD' },
+  ].map(x => `<div class="avg-item">
+    <div class="avg-val" style="color:${x.color}">${x.val}</div>
+    <div class="avg-lbl">${x.label}</div>
+  </div>`).join('');
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────
+function renderSettings() {
+  document.getElementById('goal-kcal').value = DB.goals.kcal;
+  document.getElementById('goal-p').value = DB.goals.p;
+  document.getElementById('goal-f').value = DB.goals.f;
+  document.getElementById('goal-c').value = DB.goals.c;
+}
+
+function saveGoals() {
+  DB.goals = {
+    kcal: parseInt(document.getElementById('goal-kcal').value) || 2050,
+    p: parseInt(document.getElementById('goal-p').value) || 133,
+    f: parseInt(document.getElementById('goal-f').value) || 68,
+    c: parseInt(document.getElementById('goal-c').value) || 222,
+  };
+  localStorage.setItem('goals', JSON.stringify(DB.goals));
+  showScreen('screen-diary');
+  renderDiary();
+}
+
+// ─── EXPORT ───────────────────────────────────────────────
+function exportToday() {
+  const today = todayKey();
+  const entries = diary[today] || [];
+  const [y, m, d] = today.split('-');
+  const dateStr = `${d}.${m}.${y}`;
+  let text = `${dateStr}\n\n`;
+  if (!entries.length) { text += 'Записей нет.\n'; }
+  else {
+    const groups = groupByTime(entries);
+    groups.forEach(g => {
+      const tot = calcTotals(g.entries);
+      text += `${g.time}\n`;
+      g.entries.forEach(e => {
+        text += `${e.name} ${e.grams}${e.unit || 'г'}\n`;
+        text += `${Math.round(e.kcal)} ккал | Б ${Math.round(e.p)} г | Ж ${Math.round(e.f)} г | У ${Math.round(e.c)} г\n`;
+      });
+      text += `Итого: ${Math.round(tot.kcal)} ккал | Б ${Math.round(tot.p)} | Ж ${Math.round(tot.f)} | У ${Math.round(tot.c)}\n\n`;
+    });
+    const total = calcTotals(entries);
+    const pPct = Math.round(total.p * 4 / total.kcal * 100);
+    const fPct = Math.round(total.f * 9 / total.kcal * 100);
+    const cPct = Math.round(total.c * 4 / total.kcal * 100);
+    text += `===\nИТОГО за ${dateStr}: ${Math.round(total.kcal)} ккал | Б ${Math.round(total.p)} г | Ж ${Math.round(total.f)} г | У ${Math.round(total.c)} г`;
+    text += `\nБ ${pPct}% / ${DB.goals.p > 0 ? Math.round(DB.goals.p*4/DB.goals.kcal*100) : 26}% · Ж ${fPct}% / ${DB.goals.f > 0 ? Math.round(DB.goals.f*9/DB.goals.kcal*100) : 30}% · У ${cPct}% / ${DB.goals.c > 0 ? Math.round(DB.goals.c*4/DB.goals.kcal*100) : 44}%\n`;
+  }
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `nutrition-${today}.txt`;
+  a.click();
+}
+
+// ─── UTILS ────────────────────────────────────────────────
+function pluralRu(n, one, few, many) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if ([2,3,4].includes(mod10) && ![12,13,14].includes(mod100)) return few;
+  return many;
+}
+
+// ─── START ────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
